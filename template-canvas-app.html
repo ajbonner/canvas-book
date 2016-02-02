@@ -1,0 +1,43 @@
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <title>Physics and Collisions</title>
+    <script type="text/javascript">
+    window.addEventListener('load', eventWindowLoaded, false);
+
+    function eventWindowLoaded() {
+      canvasApp();
+    }
+
+    function canvasSupport() {
+      return !document.createElement('testcanvas').getContext;
+    }
+
+    function canvasApp() {
+      if (! canvasSupport()) {
+        return;
+      }
+
+      var canvas = document.getElementById('canvasOne');
+      var ctx = canvas.getContext('2d');
+
+      function renderLoop() {
+        drawScreen();
+        window.requestAnimationFrame(renderLoop);
+      }
+
+      function drawScreen() {
+      }
+
+      renderLoop();
+    }
+    </script>
+  </head>
+  <body>
+    <h1>Physics and Collisions</h1>
+    <canvas id="canvasOne" width="500" height="500">
+    Your browser does not support HTML5 Canvas.
+    </canvas>
+  </body>
+</html>

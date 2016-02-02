@@ -1,0 +1,151 @@
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <title>Physics and Collisions</title>
+    <script type="text/javascript">
+    window.addEventListener('load', eventWindowLoaded, false);
+
+    function eventWindowLoaded() {
+      canvasApp();
+    }
+
+    function canvasSupport() {
+      return !document.createElement('testcanvas').getContext;
+    }
+
+    function canvasApp() {
+      if (! canvasSupport()) {
+        return;
+      }
+
+      var canvas = document.getElementById('canvasOne');
+      var ctx = canvas.getContext('2d');
+      var inProgress = false;
+
+      var ballTemplate = {
+        pos: { x: 0, y: 0 },
+        dir: 55,
+        speed: 4
+      };
+
+      var balls = [];
+
+      canvas.addEventListener('click', eventMouseClick, false);
+
+      function eventMouseClick(e) {
+        if (! inProgress) {
+          initCollision();
+        }
+      }
+
+      function initCollision() {
+        inProgress = true;
+
+        ball1 = Object.create(ballTemplate);
+        ball1.pos = { x: canvas.width / 4, y: 0 };
+        balls.push(ball1);
+
+        ball2 = Object.create(ballTemplate);
+        ball2.pos = { x: (canvas.width / 4) * 3, y: 0 };
+        ball2.dir = 125;
+        ball2.speed = 4;
+        balls.push(ball2);
+      }
+
+      function renderLoop() {
+        drawScreen();
+        window.requestAnimationFrame(renderLoop);
+      }
+
+      function drawScreen() {
+        ctx.strokeStyle = '#000000';
+        ctx.fillStyle = '#000000';
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        drawPitch();
+
+        collide();
+        updateBalls();
+        drawBalls();
+      }
+
+      function drawPitch() {
+        ctx.beginPath();
+        ctx.rect(0, 0, canvas.width, canvas.height);
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 0);
+        ctx.lineTo(canvas.width / 2, canvas.height);
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, canvas.height / 4, Math.PI * 2, false);
+        ctx.stroke();
+        ctx.closePath();
+      }
+
+      function drawBalls() {
+        var num_balls = balls.length;
+
+        for (i = 0; i < num_balls; i++) {
+          var ball = balls[i];
+          ctx.beginPath();
+          ctx.rect(ball.pos.x, ball.pos.y, 20, 20);
+          ctx.fill();
+        }
+      }
+
+      function updateBalls() {
+        for (var i = 0; i < balls.length; i++) {
+          var ball = balls[i];
+          var dx = Math.cos(ball.dir * (Math.PI / 180)) * ball.speed;
+          var dy = Math.sin(ball.dir * (Math.PI / 180)) * ball.speed;
+          ball.pos.x += dx;
+          ball.pos.y += dy;
+
+          // remove balls that have gone outside the canvas
+          if (ball.pos.x >= canvas.width || ball.pos.y >= canvas.height) {
+            balls.splice(i--, 1);
+          }
+        }
+
+        // reset simulation when all balls are off the canvas
+        if (balls.length == 0) {
+          inProgress = false;
+        }
+      }
+
+      function collide() {
+        if (balls.length < 2) { return; }
+
+        for (var i = 0; i < balls.length; i++) {
+          var ba = balls[i];
+
+          for (var j = 0; j < balls.length; j++) {
+            if (i == j) { continue; }
+            var bb = balls[j];
+
+            if (Math.abs(ba.pos.x - bb.pos.x) < 10 && Math.abs(ba.pos.y - bb.pos.y) < 10) {
+              console.log('Ball ' + i + ' has collided with ball ' + j);
+            }
+          }
+        }
+      }
+
+      renderLoop();
+    }
+
+    </script>
+  </head>
+  <body>
+    <h1>Physics and Collisions</h1>
+    <canvas id="canvasOne" width="640" height="480">
+    Your browser does not support HTML5 Canvas.
+    </canvas>
+  </body>
+</html>
