@@ -16,14 +16,15 @@ function canvasApp() {
   var canvas = document.getElementById('canvasOne');
   var ctx = canvas.getContext('2d');
 
-  var lastUpdate = new Date().getTime();
-  var refresh = 1000;
-  var score = 0;
+  window.addEventListener('keydown', eventKeyDown, false);
+  window.addEventListener('keyup', eventKeyUp, false);
+
+  var isGameEnded = false;
 
   var ball = {
     posX: 320,
     posY: 0,
-    speed: 10,
+    speed: 4,
     size: 10,
     velocityX: 0,
     velocityY: 0,
@@ -33,23 +34,33 @@ function canvasApp() {
 
   var paddle = {
     posX: 20,
-    posY: 240,
+    posY: 220,
     height: 40,
     width: 10,
     speed: 10 
   };
 
+  var player = {
+    name: '',
+    score: 0
+  }
+
+  var player1 = Object.create(player);
+  player1.name = 'Player 1';
+  var player2 = Object.create(player);
+  player2.name = 'Player 2';
+
   var paddle1 = Object.create(paddle);
   var paddle2 = Object.create(paddle);
   paddle2.posX = canvas.width - 20 - paddle.width;
 
-  var initialAngle = Math.floor(Math.random() * (60 - 15 + 1)) + 15;
-  ball.velocityX = Math.cos(Math.PI / 180 * initialAngle) * ball.speed;
-  ball.velocityY = Math.sin(Math.PI / 180 * initialAngle) * ball.speed;
+  resetBall();
   
   function renderLoop() {
-    paintFrame();
-    window.requestAnimationFrame(renderLoop);
+    if (! isGameEnded) {
+      paintFrame();
+      window.requestAnimationFrame(renderLoop);
+    }
   }
 
   function paintFrame() {
@@ -79,23 +90,17 @@ function canvasApp() {
     var p1sbPos = { x: 256, y: 10 };
     var p2sbPos = { x: 384, y: 10 };
 
-    if ((new Date().getTime() - lastUpdate) > refresh) {
-      if (score < 9) { 
-        score++; 
-      } else { 
-        score = 0; 
-      }
-      lastUpdate = new Date().getTime();
-    }
-
-    drawScore(p1sbPos, score, 4);
-    drawScore(p2sbPos, score, 4, true);
+    drawScore(p1sbPos, player1.score, 4);
+    drawScore(p2sbPos, player2.score, 4, true);
 
     drawPaddle(paddle1);
     drawPaddle(paddle2);
 
     updateBall();
-    checkWalls();
+    checkForGoal();
+    checkForPaddleBounce(paddle1);
+    checkForPaddleBounce(paddle2);
+    checkForBounce();
     drawBall();
   }
 
@@ -106,14 +111,26 @@ function canvasApp() {
     ball.posY = ball.nextY;
   }
 
-  function checkWalls() {
+  function checkForPaddleBounce(paddle) {
+    var dx = Math.abs(ball.nextX - paddle.posX);
+
+    if (dx < ball.size 
+        && ball.nextY >= paddle.posY && ball.nextY < (paddle.posY + paddle.height)) {
+      ball.velocityX = ball.velocityX * -1;
+    }
+  }
+
+
+  function checkForGoal() {
     if (ball.nextX + ball.size > canvas.width) { 
-      ball.velocityX = ball.velocityX * -1;
-      ball.nextX = canvas.width - ball.size;
+      registerGoal(player1);
     } else if (ball.nextX < 0) {
-      ball.velocityX = ball.velocityX * -1;
-      ball.nextX = 0;
-    } else if (ball.nextY + ball.size > canvas.height) { 
+      registerGoal(player2);
+    }
+  }
+
+  function checkForBounce() {
+    if (ball.nextY + ball.size > canvas.height) { 
       ball.velocityY = ball.velocityY * -1;
       ball.nextY = canvas.height - ball.size;
     } else if (ball.nextY < 0) {
@@ -136,6 +153,44 @@ function canvasApp() {
   function drawScore(pos, score, size, invert) {
     var i, j;
     drawChar(ctx, score, pos, size, invert);
+  }
+
+  function registerGoal(player) {
+    player.score++;
+    if (player.score > 9) {
+      endGame(player);
+    } else {
+      resetBall();
+    }
+  }
+
+  function eventKeyDown(e) {
+    var UP = 38;
+    var DOWN = 40;
+
+    if (e.keyCode == UP) {
+      paddle2.posY = Math.max(0, paddle2.posY - paddle.speed)
+    } else if (e.keyCode == DOWN) {
+      paddle2.posY = Math.min(paddle2.posY + paddle.speed, canvas.height - paddle2.height);
+    }
+  }
+  
+  function eventKeyUp(e) {
+  }
+
+  function endGame(player) {
+    isGameEnded = true;
+  }
+
+  function resetBall() {
+    ball.posX = 320;
+    ball.posY = 0;
+    ball.nextX = ball.posX;
+    ball.nextY = ball.posY;
+
+    var initialAngle = Math.floor(Math.random() * (60 - 15 + 1)) + 15;
+    ball.velocityX = Math.cos(Math.PI / 180 * initialAngle) * ball.speed;
+    ball.velocityY = Math.sin(Math.PI / 180 * initialAngle) * ball.speed;
   }
 
   renderLoop();
