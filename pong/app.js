@@ -37,7 +37,8 @@ function canvasApp() {
     posY: 220,
     height: 40,
     width: 10,
-    speed: 10 
+    dir: 0,
+    speed: 4 
   };
 
   var player = {
@@ -93,14 +94,18 @@ function canvasApp() {
     drawScore(p1sbPos, player1.score, 4);
     drawScore(p2sbPos, player2.score, 4, true);
 
-    drawPaddle(paddle1);
-    drawPaddle(paddle2);
-
     updateBall();
+    updateAsAiPaddle(paddle1);
+    //updateAsPlayerPaddle(paddle2);
+    updateAsAiPaddle(paddle2);
+
     checkForGoal();
     checkForPaddleBounce(paddle1);
     checkForPaddleBounce(paddle2);
     checkForBounce();
+
+    drawPaddle(paddle1);
+    drawPaddle(paddle2);
     drawBall();
   }
 
@@ -164,18 +169,75 @@ function canvasApp() {
     }
   }
 
+  function updateAsAiPaddle(paddle) {
+    var hitPointX = null;
+    var hitPointY = null;
+
+    var px, py;
+
+    if (paddle.posX > (canvas.width / 2)) {
+      hitPointX = paddle.posX;
+      px = hitPointX;
+      hitPointY = paddle.posY + (paddle.height / 2)
+      py = hitPointY;
+    } else {
+      hitPointX = paddle.posX + paddle.width;
+      px = hitPointX;
+      hitPointY = paddle.posY + (paddle.height / 2)
+      py = hitPointY;
+    }
+
+    var incidentAngle = Math.atan2(ball.velocityX, ball.velocityY);
+
+    //if (ball.velocityX < 0) {
+      var adj = ball.nextX - hitPointX;
+      var hyp = adj / Math.cos(incidentAngle * (Math.PI / 180)); 
+      hitPointY = ball.nextY + hyp;
+
+      ctx.beginPath();
+      ctx.moveTo(ball.nextX + ball.size / 2, ball.nextY + ball.size / 2);
+      ctx.lineTo(px, py);
+      ctx.lineTo(px, ball.nextY + ball.size / 2);
+      ctx.lineTo(ball.nextX + ball.size / 2, ball.nextY + ball.size / 2);
+      ctx.stroke();
+
+      if (hitPointY <= 0 || hitPointY >= canvas.height) { return; }
+     
+      if (hitPointY < paddle.height / 2) {
+        hitPointY = 0;
+      } else if (hitPointY > canvas.height - paddle.height) {
+        hitPointY = canvas.height - paddle.height;
+      } else {
+        hitPointY = hitPointY - (paddle.height / 2);
+      }
+
+      paddle.posY = hitPointY; 
+    //}
+  }
+
+  function updateAsPlayerPaddle(paddle) {
+    if (paddle.dir < 0) {
+      paddle.posY = Math.max(0, paddle.posY + (paddle.dir * paddle.speed));
+    } else if (paddle.dir > 0) {
+      paddle.posY = Math.min(paddle.posY + paddle.speed, canvas.height - paddle.height);
+    }
+  }
+
   function eventKeyDown(e) {
     var UP = 38;
     var DOWN = 40;
 
     if (e.keyCode == UP) {
+      paddle2.dir = -1;
       paddle2.posY = Math.max(0, paddle2.posY - paddle.speed)
     } else if (e.keyCode == DOWN) {
+      paddle2.dir = 1;
       paddle2.posY = Math.min(paddle2.posY + paddle.speed, canvas.height - paddle2.height);
     }
   }
   
   function eventKeyUp(e) {
+    paddle2.dir = 0;
   }
 
   function endGame(player) {
