@@ -9,7 +9,7 @@ function canvasSupport() {
 }
 
 function canvasApp() {
-  if (! canvasSupport()) {
+  if (!canvasSupport()) {
     return;
   }
 
@@ -24,7 +24,7 @@ function canvasApp() {
   var ball = {
     posX: 320,
     posY: 0,
-    speed: 4,
+    speed: 8,
     size: 10,
     velocityX: 0,
     velocityY: 0,
@@ -34,17 +34,27 @@ function canvasApp() {
 
   var paddle = {
     posX: 20,
-    posY: 220,
-    height: 40,
+    posY: 210,
+    height: 60,
     width: 10,
     dir: 0,
-    speed: 4 
+    speed: 10
   };
 
   var player = {
     name: '',
     score: 0
   }
+
+  var p1Scoreboard = {
+    x: 256,
+    y: 10
+  };
+
+  var p2Scoreboard = {
+    x: 384,
+    y: 10
+  };
 
   var player1 = Object.create(player);
   player1.name = 'Player 1';
@@ -53,57 +63,32 @@ function canvasApp() {
 
   var paddle1 = Object.create(paddle);
   var paddle2 = Object.create(paddle);
+  paddle1.speed = 4;
   paddle2.posX = canvas.width - 20 - paddle.width;
 
   resetBall();
-  
+
   function renderLoop() {
-    if (! isGameEnded) {
+    if (!isGameEnded) {
       paintFrame();
       window.requestAnimationFrame(renderLoop);
     }
   }
 
   function paintFrame() {
-    // outer box 
-    ctx.beginPath();
-    ctx.strokeStyle = '#000000';
-    ctx.fillStyle = '#000000';
-    ctx.rect(0, 0, 640, 480);
-    ctx.fill();
-
-    // dashed halfway line
-    var mid = canvas.width / 2;
-    var dashSize = 9;
-
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#ffffff';
-    ctx.fillStyle = '#ffffff';
-    ctx.setLineDash([dashSize, dashSize]);
-
-    ctx.beginPath();
-    ctx.moveTo(mid, dashSize);
-    ctx.lineTo(mid, canvas.height - dashSize);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // draw scoreboard
-    var p1sbPos = { x: 256, y: 10 };
-    var p2sbPos = { x: 384, y: 10 };
-
-    drawScore(p1sbPos, player1.score, 4);
-    drawScore(p2sbPos, player2.score, 4, true);
-
     updateBall();
     updateAsAiPaddle(paddle1);
-    //updateAsPlayerPaddle(paddle2);
-    updateAsAiPaddle(paddle2);
+    updateAsPlayerPaddle(paddle2);
+    // updateAsAiPaddle(paddle2);
 
     checkForGoal();
     checkForPaddleBounce(paddle1);
     checkForPaddleBounce(paddle2);
     checkForBounce();
 
+    drawPitch();
+    drawScore(p1Scoreboard, player1.score, 4);
+    drawScore(p2Scoreboard, player2.score, 4, true);
     drawPaddle(paddle1);
     drawPaddle(paddle2);
     drawBall();
@@ -117,17 +102,21 @@ function canvasApp() {
   }
 
   function checkForPaddleBounce(paddle) {
-    var dx = Math.abs(ball.nextX - paddle.posX);
+    // so we need to know which face of the paddle is being tested
+    // for example the left paddle's x position is 10px to the left
+    // when compared with the right paddle
+    var dir = (ball.velocityX > 0) ? 1 : -1;
+    var paddleFaceX = (dir > 0) ? paddle.posX : paddle.posX + paddle.width;
+    var dx = Math.abs(ball.posX - paddleFaceX);
 
-    if (dx < ball.size 
-        && ball.nextY >= paddle.posY && ball.nextY < (paddle.posY + paddle.height)) {
-      ball.velocityX = ball.velocityX * -1;
+    if (dx < Math.abs(ball.velocityX) && ball.posY >= paddle.posY 
+        && ball.posY < (paddle.posY + paddle.height)) {
+      ball.velocityX *= -1;
     }
   }
 
-
   function checkForGoal() {
-    if (ball.nextX + ball.size > canvas.width) { 
+    if (ball.nextX + ball.size > canvas.width) {
       registerGoal(player1);
     } else if (ball.nextX < 0) {
       registerGoal(player2);
@@ -135,13 +124,37 @@ function canvasApp() {
   }
 
   function checkForBounce() {
-    if (ball.nextY + ball.size > canvas.height) { 
+    if (ball.nextY + ball.size > canvas.height) {
       ball.velocityY = ball.velocityY * -1;
       ball.nextY = canvas.height - ball.size;
     } else if (ball.nextY < 0) {
       ball.velocityY = ball.velocityY * -1;
       ball.nextY = 0;
     }
+  }
+
+  function drawPitch() {
+    // outer box
+    ctx.beginPath();
+    ctx.strokeStyle = '#000000';
+    ctx.fillStyle = '#000000';
+    ctx.rect(0, 0, 640, 480);
+    ctx.fill();
+
+    // dashed halfway line
+    var mid = canvas.width / 2;
+    var dashSize = 9;
+
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = '#ffffff';
+    ctx.fillStyle = '#ffffff';
+    ctx.setLineDash([dashSize, dashSize]);
+
+    ctx.beginPath();
+    ctx.moveTo(mid, dashSize);
+    ctx.lineTo(mid, canvas.height - dashSize);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   function drawPaddle(paddle) {
@@ -156,7 +169,6 @@ function canvasApp() {
   }
 
   function drawScore(pos, score, size, invert) {
-    var i, j;
     drawChar(ctx, score, pos, size, invert);
   }
 
@@ -170,56 +182,48 @@ function canvasApp() {
   }
 
   function updateAsAiPaddle(paddle) {
-    var hitPointX = null;
-    var hitPointY = null;
+    var isHeadingTowardMe = isBallHeadingTowardMe(paddle, ball);
+    var paddleMidpoint = paddle.posY + (paddle.height / 2);
+    var distanceFromBallHeight = ball.posY + (ball.size / 2) - paddleMidpoint;
+    var nextY = paddle.posY;
 
-    var px, py;
-
-    if (paddle.posX > (canvas.width / 2)) {
-      hitPointX = paddle.posX;
-      px = hitPointX;
-      hitPointY = paddle.posY + (paddle.height / 2)
-      py = hitPointY;
-    } else {
-      hitPointX = paddle.posX + paddle.width;
-      px = hitPointX;
-      hitPointY = paddle.posY + (paddle.height / 2)
-      py = hitPointY;
-    }
-
-    var incidentAngle = Math.atan2(ball.velocityX, ball.velocityY);
-
-    //if (ball.velocityX < 0) {
-      var adj = ball.nextX - hitPointX;
-      var hyp = adj / Math.cos(incidentAngle * (Math.PI / 180)); 
-      hitPointY = ball.nextY + hyp;
-
-      ctx.beginPath();
-      ctx.moveTo(ball.nextX + ball.size / 2, ball.nextY + ball.size / 2);
-      ctx.lineTo(px, py);
-      ctx.lineTo(px, ball.nextY + ball.size / 2);
-      ctx.lineTo(ball.nextX + ball.size / 2, ball.nextY + ball.size / 2);
-      ctx.stroke();
-
-      if (hitPointY <= 0 || hitPointY >= canvas.height) { return; }
-     
-      if (hitPointY < paddle.height / 2) {
-        hitPointY = 0;
-      } else if (hitPointY > canvas.height - paddle.height) {
-        hitPointY = canvas.height - paddle.height;
-      } else {
-        hitPointY = hitPointY - (paddle.height / 2);
+    if (isHeadingTowardMe && distanceFromBallHeight != 0) {
+      if (distanceFromBallHeight > 0) {
+        nextY = paddle.posY + Math.min(paddle.speed, distanceFromBallHeight);
+      } else if (distanceFromBallHeight < 0) {
+        nextY = paddle.posY + Math.max(paddle.speed * -1,
+          distanceFromBallHeight);
       }
 
-      paddle.posY = hitPointY; 
-    //}
+      if (nextY < 0) { nextY = 0; }
+      if (nextY > canvas.height - paddle.height) {
+        nextY = canvas.height - paddle.height;
+      }
+    } else if (!isHeadingTowardMe) {
+      var distanceFromMidPoint = canvas.height / 2 - paddle.posY;
+      if (distanceFromMidPoint > 0) {
+        nextY = paddle.posY + Math.min(paddle.speed, distanceFromMidPoint);
+      } else if (distanceFromMidPoint < 0) {
+        nextY = paddle.posY + Math.max(paddle.speed * -1, distanceFromMidPoint);
+      }
+    }
+
+    paddle.posY = nextY;
+  }
+
+  function isBallHeadingTowardMe(paddle, ball) {
+    var currentDx = Math.abs(paddle.posX - ball.posX);
+    var newDx = Math.abs(paddle.posX - (ball.posX + ball.velocityX));
+
+    return currentDx > newDx;
   }
 
   function updateAsPlayerPaddle(paddle) {
     if (paddle.dir < 0) {
-      paddle.posY = Math.max(0, paddle.posY + (paddle.dir * paddle.speed));
+      paddle.posY = Math.max(0, paddle.posY - paddle.speed);
     } else if (paddle.dir > 0) {
-      paddle.posY = Math.min(paddle.posY + paddle.speed, canvas.height - paddle.height);
+      paddle.posY = Math.min(paddle.posY + paddle.speed, canvas.height -
+        paddle.height);
     }
   }
 
@@ -229,13 +233,11 @@ function canvasApp() {
 
     if (e.keyCode == UP) {
       paddle2.dir = -1;
-      paddle2.posY = Math.max(0, paddle2.posY - paddle.speed)
     } else if (e.keyCode == DOWN) {
       paddle2.dir = 1;
-      paddle2.posY = Math.min(paddle2.posY + paddle.speed, canvas.height - paddle2.height);
     }
   }
-  
+
   function eventKeyUp(e) {
     paddle2.dir = 0;
   }
@@ -246,11 +248,12 @@ function canvasApp() {
 
   function resetBall() {
     ball.posX = 320;
-    ball.posY = 0;
+    ball.posY = canvas.height / 2 - ball.size / 2;
     ball.nextX = ball.posX;
     ball.nextY = ball.posY;
 
     var initialAngle = Math.floor(Math.random() * (60 - 15 + 1)) + 15;
+    initialAngle *= (Math.random() >= 0.5) ? 1 : -1;
     ball.velocityX = Math.cos(Math.PI / 180 * initialAngle) * ball.speed;
     ball.velocityY = Math.sin(Math.PI / 180 * initialAngle) * ball.speed;
   }
