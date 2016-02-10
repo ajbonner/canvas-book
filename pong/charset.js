@@ -1,3 +1,7 @@
+var TextAlign = {
+  LEFT: 1,
+  RIGHT: 2
+};
 var glyphWidth = 8;
 var glyphHeight = 8;
 
@@ -132,27 +136,34 @@ var my8BitCharset = [
   [0x00, 0x08, 0x1C, 0x36, 0x63, 0x41, 0x41, 0x7F]
 ];
 
-function drawText(ctx, string, pos, size) {
+function drawText(ctx, string, pos, size, align) {
+  if (align === null) {
+    align = TextAlign.LEFT;
+  }
+  var string = string.toString();
   var i = 0;
-  var char, charcode; 
-  var glyph = my8BitCharset[charcode];
-  for (i = 0; pos < string.length; i++) {
-    var pos = Object.create(pos);
-    pos.x += glyphWidth * size * i;
-    drawChar(ctx, character, pos, size);
+
+  var pos = Object.create(pos);
+
+  if (align == TextAlign.RIGHT) { // pos is therefore top left edge
+    for (i = string.length - 1; i >= 0; i--) {
+      pos.x -= glyphWidth * size;
+      drawChar(ctx, string.charAt(i), pos, size);
+    }
+  } else if (align == TextAlign.LEFT) { // pos is therefore top right edge
+    for (i = 0; i < string.length; i++) {
+      pos.x += glyphWidth * size;
+      drawChar(ctx, string.charAt(i), pos, size);
+    }
   }
 }
 
-function drawChar(ctx, character, pos, size, invert) {
+/**
+ * This function treats pos as the top left 
+ */
+function drawChar(ctx, character, pos, size) {
   var charcode = character.toString().charCodeAt(0);
   var glyph = my8BitCharset[charcode];
-
-  // use pos x coord as right edge not left
-  if (invert) {
-    // clone original position as its a reference and we are modifying it
-    pos = Object.create(pos);
-    pos.x -= glyphWidth * size;
-  }
 
   for (i = 0; i < glyphHeight; i++) {
     var scanLine = glyph[i];

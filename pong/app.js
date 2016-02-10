@@ -18,7 +18,9 @@ function canvasApp() {
 
   window.addEventListener('keydown', eventKeyDown, false);
   window.addEventListener('keyup', eventKeyUp, false);
+  window.addEventListener('click', eventClick, false);
 
+  var isGameBegun = false;
   var isGameEnded = false;
 
   var ball = {
@@ -47,13 +49,13 @@ function canvasApp() {
   }
 
   var p1Scoreboard = {
-    x: 256,
-    y: 10
+    x: 258,
+    y: 20
   };
 
   var p2Scoreboard = {
-    x: 384,
-    y: 10
+    x: 382,
+    y: 20
   };
 
   var player1 = Object.create(player);
@@ -69,13 +71,25 @@ function canvasApp() {
   resetBall();
 
   function renderLoop() {
-    if (!isGameEnded) {
-      paintFrame();
-      window.requestAnimationFrame(renderLoop);
+    if (!isGameBegun) {
+      paintStartScreen();
+    } else if (!isGameEnded) {
+      paintGameFrame();
     }
+    window.requestAnimationFrame(renderLoop);
   }
 
-  function paintFrame() {
+  function paintStartScreen() {
+    ctx.beginPath();
+    ctx.strokeStyle = '#000000';
+    ctx.fillStyle = '#000000';
+    ctx.rect(0, 0, 640, 480);
+    ctx.fill();
+    drawText(ctx, "Pong!", { x: 100, y: 40 }, 8, TextAlign.LEFT);
+    drawText(ctx, "Click to Start", { x: 190, y: 320 }, 2, TextAlign.LEFT);
+  }
+
+  function paintGameFrame() {
     updateBall();
     updateAsAiPaddle(paddle1);
     updateAsPlayerPaddle(paddle2);
@@ -87,8 +101,8 @@ function canvasApp() {
     checkForBounce();
 
     drawPitch();
-    drawScore(p1Scoreboard, player1.score, 4);
-    drawScore(p2Scoreboard, player2.score, 4, true);
+    drawScore(p1Scoreboard, player1.score, 4, TextAlign.RIGHT);
+    drawScore(p2Scoreboard, player2.score, 4, TextAlign.LEFT);
     drawPaddle(paddle1);
     drawPaddle(paddle2);
     drawBall();
@@ -145,7 +159,7 @@ function canvasApp() {
     var mid = canvas.width / 2;
     var dashSize = 9;
 
-    ctx.lineWidth = 10;
+    ctx.lineWidth = 4;
     ctx.strokeStyle = '#ffffff';
     ctx.fillStyle = '#ffffff';
     ctx.setLineDash([dashSize, dashSize]);
@@ -168,8 +182,8 @@ function canvasApp() {
     ctx.fill();
   }
 
-  function drawScore(pos, score, size, invert) {
-    drawChar(ctx, score, pos, size, invert);
+  function drawScore(pos, score, size, align) {
+    drawText(ctx, score, pos, size, align);
   }
 
   function registerGoal(player) {
@@ -222,8 +236,16 @@ function canvasApp() {
     if (paddle.dir < 0) {
       paddle.posY = Math.max(0, paddle.posY - paddle.speed);
     } else if (paddle.dir > 0) {
-      paddle.posY = Math.min(paddle.posY + paddle.speed, canvas.height -
-        paddle.height);
+      paddle.posY = Math.min(
+          paddle.posY + paddle.speed, 
+          canvas.height - paddle.height);
+    }
+  }
+
+  function eventClick(e) {
+    if (!isGameBegun) {
+      isGameBegun = true;
+      isGameEnded = false;
     }
   }
 
@@ -252,9 +274,11 @@ function canvasApp() {
     ball.nextX = ball.posX;
     ball.nextY = ball.posY;
 
+    var initialDirection = (Math.random() >= 0.5) ? 1 : -1;
     var initialAngle = Math.floor(Math.random() * (60 - 15 + 1)) + 15;
     initialAngle *= (Math.random() >= 0.5) ? 1 : -1;
-    ball.velocityX = Math.cos(Math.PI / 180 * initialAngle) * ball.speed;
+
+    ball.velocityX = Math.cos(Math.PI / 180 * initialAngle) * ball.speed * initialDirection;
     ball.velocityY = Math.sin(Math.PI / 180 * initialAngle) * ball.speed;
   }
 
